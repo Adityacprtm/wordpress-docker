@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  labels:
+    app: wordpress
+    tier: mysql
+spec:
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: wordpress
+    tier: mysql
+spec:
+  selector:
+    app: wordpress
+    tier: mysql
+  ports:
+    - port: 3303
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: mysql
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credential
+                  key: password
+          resources:
+            limits:
+              memory: "200Mi"
+              cpu: "200m"
+          ports:
+            - name: mysql
+              containerPort: 3306
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-persistence-volume
+      volumes:
+        - name: mysql-persistence-volume
+          persistentVolumeClaim:
+            claimName: mysql-pvc
